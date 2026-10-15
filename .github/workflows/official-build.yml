@@ -1,0 +1,65 @@
+name: official-build
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 审计实验：官方 emexlab/Nyxian 构建流程原样复刻
+#
+# 背景：官方 CI（run 36919965048，2026-10-01）绿跑实证——编译/打包/ipa 全部健康。
+#       本仓目的 = 验证"官方配方原样执行"在本账号环境下是否同样健康。
+#
+# 与官方 build.yml 的对应关系（全部照抄官方，零自研步骤）：
+#   ① checkout：官方 checkout 自身仓 + recursive submodules →
+#      此处等价改为 checkout 官方仓指定 ref（官方绿跑 commit 0587c30）+ recursive submodules
+#   ② VERSION 读取：逐字照抄官方（awk Config.xcconfig）
+#   ③ brew install ldid dpkg libarchive：逐字照抄官方
+#   ④ CHECK_DEPS=0 make all：逐字照抄官方（make 内部含 LLVM 工具链构建 + xcodebuild archive + ipa 打包）
+#   ⑤ upload artifact：官方 path: Nyxian.ipa
+#
+# 无缓存、无修补、无自研合并、无输出截断——完整构建日志由 GitHub Actions 全量保留。
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+    inputs:
+      nyxian_ref:
+        description: 'Nyxian ref (官方绿跑基准 = 0587c302a089219b68983c20be9265c6051e07e5; 0.11.4 release = 0.11.4)'
+        required: false
+        default: '0587c302a089219b68983c20be9265c6051e07e5'
+
+permissions:
+  contents: read
+
+jobs:
+  Build-and-Package:
+    runs-on: macos-latest
+    timeout-minutes: 420
+    steps:
+      - name: Checkout Nyxian (official repo, recursive submodules)
+        uses: actions/checkout@v4
+        with:
+          repository: emexlab/Nyxian
+          ref: ${{ inputs.nyxian_ref }}
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Read VERSION (official step, verbatim)
+        run: |
+          VERSION=$(awk -F'=' '/^[[:space:]]*VERSION[[:space:]]*=/ {gsub(/[[:space:]]/,"",$2); print $2; exit}' Config.xcconfig)
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Install dependencies (official step, verbatim)
+        run: |
+          set -e
+          brew install ldid dpkg libarchive
+
+      - name: Build (official step, verbatim: CHECK_DEPS=0 make all)
+        run: |
+          set -e
+          CHECK_DEPS=0 make all
+
+      - name: Upload artifact (official step: Nyxian.ipa)
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifact
+          path: Nyxian.ipa
+          if-no-files-found: error
+          compression-level: 6
