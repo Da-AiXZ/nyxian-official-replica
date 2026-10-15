@@ -3,30 +3,29 @@ name: official-build
 # ─────────────────────────────────────────────────────────────────────────────
 # 审计实验：官方 emexlab/Nyxian 构建流程原样复刻
 #
-# 背景：官方 CI（run 36919965048，2026-10-01）绿跑实证——编译/打包/ipa 全部健康。
-#       本仓目的 = 验证"官方配方原样执行"在本账号环境下是否同样健康。
+# 触发方式与官方一致 = push（官方 build.yml 即 push 触发，见官方日志
+# "Job defined at: emexlab/Nyxian/.github/workflows/build.yml@refs/heads/main"）。
 #
-# 与官方 build.yml 的对应关系（全部照抄官方，零自研步骤）：
-#   ① checkout：官方 checkout 自身仓 + recursive submodules →
-#      此处等价改为 checkout 官方仓指定 ref（官方绿跑 commit 0587c30）+ recursive submodules
-#   ② VERSION 读取：逐字照抄官方（awk Config.xcconfig）
-#   ③ brew install ldid dpkg libarchive：逐字照抄官方
-#   ④ CHECK_DEPS=0 make all：逐字照抄官方（make 内部含 LLVM 工具链构建 + xcodebuild archive + ipa 打包）
-#   ⑤ upload artifact：官方 path: Nyxian.ipa
+# 步骤逐字对应官方 build.yml（零自研步骤）：
+#   ① checkout 官方仓官方绿跑 commit 0587c30 + recursive submodules（官方=checkout 自身仓+子模块）
+#   ② VERSION 读取（awk Config.xcconfig，逐字）
+#   ③ brew install ldid dpkg libarchive（逐字）
+#   ④ CHECK_DEPS=0 make all（逐字）
+#   ⑤ upload artifact Nyxian.ipa
 #
-# 无缓存、无修补、无自研合并、无输出截断——完整构建日志由 GitHub Actions 全量保留。
+# 无缓存、无修补、无自研合并、无输出截断；完整日志由 GitHub Actions 全量保留。
+# 注意：push 到 main 即触发全量构建（约 5h）。
 # ─────────────────────────────────────────────────────────────────────────────
 
 on:
-  workflow_dispatch:
-    inputs:
-      nyxian_ref:
-        description: 'Nyxian ref (官方绿跑基准 = 0587c302a089219b68983c20be9265c6051e07e5; 0.11.4 release = 0.11.4)'
-        required: false
-        default: '0587c302a089219b68983c20be9265c6051e07e5'
+  push:
+    branches: [main]
 
 permissions:
   contents: read
+
+env:
+  NYXIAN_REF: 0587c302a089219b68983c20be9265c6051e07e5
 
 jobs:
   Build-and-Package:
@@ -37,7 +36,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: emexlab/Nyxian
-          ref: ${{ inputs.nyxian_ref }}
+          ref: ${{ env.NYXIAN_REF }}
           submodules: recursive
           fetch-depth: 1
 
