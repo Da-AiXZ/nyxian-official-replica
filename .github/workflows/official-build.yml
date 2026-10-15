@@ -49,12 +49,12 @@ jobs:
           set -e
           brew install ldid dpkg libarchive
 
-      - name: Build (official step, verbatim: CHECK_DEPS=0 make all)
+      - name: Build (official step, verbatim CHECK_DEPS=0 make all)
         run: |
           set -e
           CHECK_DEPS=0 make all
 
-      - name: Upload artifact (official step: Nyxian.ipa)
+      - name: Upload artifact (official step Nyxian.ipa)
         uses: actions/upload-artifact@v4
         with:
           name: artifact
