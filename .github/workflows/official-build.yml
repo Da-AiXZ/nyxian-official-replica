@@ -30,7 +30,6 @@ env:
 jobs:
   Build-and-Package:
     runs-on: macos-latest
-    timeout-minutes: 420
     steps:
       - name: Checkout Nyxian (official repo, recursive submodules)
         uses: actions/checkout@v4
