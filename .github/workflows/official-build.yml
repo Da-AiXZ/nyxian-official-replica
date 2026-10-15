@@ -68,7 +68,9 @@ jobs:
           archive: false
 
       # ── 唯一非官方步（追加）：官方只传 ipa；此处把 make all 产出的工具链一并上传 ──
+      # if: always() → 即使 App 编译段失败，只要 make all 出了工具链也能传出来
       - name: Upload toolchain (LLVM.xcframework + CoreCompilerSupportLibs + SwiftToolchain.zip)
+        if: ${{ always() }}
         uses: actions/upload-artifact@v7
         with:
           path: |
