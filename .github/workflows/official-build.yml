@@ -7,7 +7,7 @@ name: official-build
 # "Job defined at: emexlab/Nyxian/.github/workflows/build.yml@refs/heads/main"）。
 #
 # 步骤逐字对应官方 build.yml（零自研步骤）：
-#   ① checkout 官方仓官方绿跑 commit 0587c30 + recursive submodules（官方=checkout 自身仓+子模块）
+#   ① checkout 官方仓 0.11.4 release commit 0c61cfb + recursive submodules（官方=checkout 自身仓+子模块）
 #   ② VERSION 读取（awk Config.xcconfig，逐字）
 #   ③ brew install ldid dpkg libarchive（逐字）
 #   ④ CHECK_DEPS=0 make all（逐字）
@@ -25,7 +25,10 @@ permissions:
   contents: read
 
 env:
-  NYXIAN_REF: 0587c302a089219b68983c20be9265c6051e07e5
+  # 用户拍板（2026-10-16）：0.11.4 = 官方正式 release（官方 CI 构建并发布过，必然可绿）。
+  # 对照基准 = 官方 0.11.4 release 的 Nyxian.ipa = 111,250,101 bytes。
+  # （0587c30 = 官方 10-01 最后一次绿跑 commit，另一实验线并行对照）
+  NYXIAN_REF: 0c61cfb57ee3d85d96a7102132db4268bcaa1db3
 
 jobs:
   Build-and-Package:
