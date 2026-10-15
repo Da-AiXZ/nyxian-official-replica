@@ -1,66 +1,79 @@
-name: official-build
+name: Build iOS App
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 审计实验：官方 emexlab/Nyxian 构建流程原样复刻
+# 审计实验：官方 emexlab/Nyxian build.yml 原样复刻（0.11.4）
 #
-# 触发方式与官方一致 = push（官方 build.yml 即 push 触发，见官方日志
-# "Job defined at: emexlab/Nyxian/.github/workflows/build.yml@refs/heads/main"）。
-#
-# 步骤逐字对应官方 build.yml（零自研步骤）：
-#   ① checkout 官方仓 0.11.4 release commit 0c61cfb + recursive submodules（官方=checkout 自身仓+子模块）
-#   ② VERSION 读取（awk Config.xcconfig，逐字）
-#   ③ brew install ldid dpkg libarchive（逐字）
-#   ④ CHECK_DEPS=0 make all（逐字）
-#   ⑤ upload artifact Nyxian.ipa
-#
-# 无缓存、无修补、无自研合并、无输出截断；完整日志由 GitHub Actions 全量保留。
-# 注意：push 到 main 即触发全量构建（约 5h）。
+# 与官方 build.yml（gh api 原文核对）的差异只有一处：
+#   官方只上传 Nyxian.ipa → 本仓额外追加一个 artifact 上传步，
+#   把 make all 产出的工具链（LLVM.xcframework / CoreCompilerSupportLibs /
+#   SwiftToolchain.zip）与 ipa 一并上传。
+# 构建步骤（checkout / VERSION / brew / CHECK_DEPS=0 make all / upload）逐字照抄官方，
+# timeout-minutes: 1200 也是官方原文。
+# 无缓存、无修补、无自研合并、无输出截断。
 # ─────────────────────────────────────────────────────────────────────────────
 
 on:
   push:
-    branches: [main]
+    branches:
+      - '**'
+  pull_request:
+    branches:
+      - '**'
+  workflow_dispatch:
 
-permissions:
-  contents: read
-
-env:
-  # 用户拍板（2026-10-16）：0.11.4 = 官方正式 release（官方 CI 构建并发布过，必然可绿）。
-  # 对照基准 = 官方 0.11.4 release 的 Nyxian.ipa = 111,250,101 bytes。
-  # （0587c30 = 官方 10-01 最后一次绿跑 commit，另一实验线并行对照）
-  NYXIAN_REF: 0c61cfb57ee3d85d96a7102132db4268bcaa1db3
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  Build-and-Package:
+  build:
+    name: Build and Package
     runs-on: macos-latest
+
     steps:
-      - name: Checkout Nyxian (official repo, recursive submodules)
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           repository: emexlab/Nyxian
-          ref: ${{ env.NYXIAN_REF }}
+          ref: 0.11.4
           submodules: recursive
-          fetch-depth: 1
 
-      - name: Read VERSION (official step, verbatim)
+      - name: Extract version
         run: |
           VERSION=$(awk -F'=' '/^[[:space:]]*VERSION[[:space:]]*=/ {gsub(/[[:space:]]/,"",$2); print $2; exit}' Config.xcconfig)
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
-      - name: Install dependencies (official step, verbatim)
+      - name: Install Dependencies
         run: |
           set -e
+
+          # Packages we desperately need
           brew install ldid dpkg libarchive
 
-      - name: Build (official step, verbatim CHECK_DEPS=0 make all)
+      - name: Setup
         run: |
           set -e
+
+      - name: Build Nyxian
+        timeout-minutes: 1200
+        run: |
+          set -e
+
           CHECK_DEPS=0 make all
 
-      - name: Upload artifact (official step Nyxian.ipa)
-        uses: actions/upload-artifact@v4
+      - name: Upload Nyxian
+        uses: actions/upload-artifact@v7
         with:
-          name: artifact
           path: Nyxian.ipa
+          archive: false
+
+      # ── 唯一非官方步（追加）：官方只传 ipa；此处把 make all 产出的工具链一并上传 ──
+      - name: Upload toolchain (LLVM.xcframework + CoreCompilerSupportLibs + SwiftToolchain.zip)
+        uses: actions/upload-artifact@v7
+        with:
+          path: |
+            LLVM-On-iOS/LLVM.xcframework
+            LLVM-On-iOS/CoreCompilerSupportLibs
+            LLVM-On-iOS/SwiftToolchain.zip
+          compression-level: 0
           if-no-files-found: error
-          compression-level: 6
