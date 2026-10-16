@@ -1,7 +1,11 @@
 name: Build iOS App
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 审计实验：官方 emexlab/Nyxian build.yml 原样复刻（0.11.4）
+# 审计实验：官方 emexlab/Nyxian build.yml 原样复刻（main@0587c30）
+#
+# ref = 0587c302a089219b68983c20be9265c6051e07e5 = 官方 10-01 绿跑 run
+# 36919965048 的精确 head SHA（该 commit 含 9-15 的 PEMachOUtils.m extern
+# 修复 f4209828；0.11.4 tag 早于修复，App 段必红——已由 0.11.4 复刻实证）。
 #
 # 与官方 build.yml（gh api 原文核对）的差异只有一处：
 #   官方只上传 Nyxian.ipa → 本仓额外追加一个 artifact 上传步，
@@ -10,6 +14,7 @@ name: Build iOS App
 # 构建步骤（checkout / VERSION / brew / CHECK_DEPS=0 make all / upload）逐字照抄官方，
 # timeout-minutes: 1200 也是官方原文。
 # 无缓存、无修补、无自研合并、无输出截断。
+# 判定基准：success + ipa = 112,522,815 bytes / SHA256 7451b54d…（官方绿跑原值）
 # ─────────────────────────────────────────────────────────────────────────────
 
 on:
@@ -35,7 +40,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: emexlab/Nyxian
-          ref: 0.11.4
+          ref: 0587c302a089219b68983c20be9265c6051e07e5
           submodules: recursive
 
       - name: Extract version
